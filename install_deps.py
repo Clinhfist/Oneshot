@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Кросплатформний скрипт-установник залежностей
+для основного скрипта та oneshot.py (без встановлення самого oneshot.py).
+"""
+
 import argparse
 import os
 import platform
@@ -13,6 +18,10 @@ REQUIRED_BINARIES = {
     "iw": "iw",
     "ip": "iproute2",
 }
+
+PYTHON_PACKAGES = [
+    "wcwidth",
+]
 
 
 def run_cmd(cmd: list[str], check: bool = True) -> int:
@@ -55,11 +64,11 @@ def install_linux_system_deps(pkg_mgr: str, dry_run: bool = False) -> None:
         prefix = []
 
     pkg_maps = {
-        "apt": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python3-pip"],
-        "pacman": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python-pip"],
-        "dnf": ["wpa_supplicant", "pixiewps", "iw", "iproute-tc", "python3-pip"],
-        "zypper": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python3-pip"],
-        "apk": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "py3-pip"],
+        "apt": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python3-pip", "python3-wcwidth"],
+        "pacman": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python-pip", "python-wcwidth"],
+        "dnf": ["wpa_supplicant", "pixiewps", "iw", "iproute-tc", "python3-pip", "python3-wcwidth"],
+        "zypper": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "python3-pip", "python3-wcwidth"],
+        "apk": ["wpa_supplicant", "pixiewps", "iw", "iproute2", "py3-pip", "py3-wcwidth"],
     }
 
     packages = pkg_maps.get(pkg_mgr, list(REQUIRED_BINARIES.values()))
@@ -101,12 +110,20 @@ def install_python_deps(target_dir: Path, dry_run: bool = False) -> None:
     req_file = target_dir / "requirements.txt"
     if req_file.exists():
         cmd = [sys.executable, "-m", "pip", "install", "-r", str(req_file)]
-        if dry_run:
-            print(f"[DRY-RUN] {' '.join(cmd)}")
-        else:
-            run_cmd(cmd, check=False)
     else:
-        print("[*] Файл requirements.txt не знайдено — додаткові pip-пакети не потрібні.")
+        cmd = [sys.executable, "-m", "pip", "install"] + PYTHON_PACKAGES
+
+    if dry_run:
+        print(f"[DRY-RUN] {' '.join(cmd)}")
+        return
+
+    rc = run_cmd(cmd, check=False)
+    if rc != 0:
+        print(
+            "[!] Якщо система блокує глобальний pip (PEP 668 / externally-managed-environment), "
+            "спробуйте встановити пакет через системний пакетний менеджер "
+            "(наприклад, python-wcwidth / python3-wcwidth) або запустіть з --break-system-packages."
+        )
 
 
 def verify_environment() -> None:
@@ -124,6 +141,12 @@ def verify_environment() -> None:
         path = shutil.which(binary)
         status = f"OK ({path})" if path else f"ВІДСУТНІЙ (пакет: {pkg})"
         print(f"  - {binary}: {status}")
+
+    try:
+        import wcwidth  # noqa: F401
+        print("  - wcwidth: OK")
+    except ImportError:
+        print("  - wcwidth: ВІДСУТНІЙ (pip install wcwidth)")
 
 
 def main() -> None:
