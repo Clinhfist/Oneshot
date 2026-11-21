@@ -1,5 +1,5 @@
 OneShot (Multi-Target Wrapper + OneShotPin)
-OneShot — це набір інструментів для аудиту безпеки WPS-мереж без необхідності переводити бездротовий інтерфейс у режим моніторингу. Репозиторій містить базовий скрипт oneshot.py, багатоцільову обгортку main.py з автоматизацією етапів перевірки, захистом від «зависання» на заблокованих/повільних точках доступу та збереженням результатів у crack.json, а також кросплатформний інсталятор залежностей install_deps.py.
+OneShot — це набір інструментів для аудиту безпеки WPS-мереж без необхідності переводити бездротовий інтерфейс у режим моніторингу. Репозиторій містить модернізований базовий скрипт oneshot.py, багатоцільову обгортку main.py з автоматизацією етапів перевірки, захистом від «зависання» на заблокованих або повільних точках доступу та збереженням результатів у crack.json, а також кросплатформний інсталятор залежностей install_deps.py і файл requirements.txt.
 > Примітка: Використовуйте інструмент лише у межах авторизованого тестування власних або дозволених для аудиту мереж.
 > 
 Можливості
@@ -10,17 +10,20 @@ OneShot — це набір інструментів для аудиту без�
    * Анти-зависання (run_stage): автоматичний пропуск стадії при повторенні того самого PIN, виявленні WPS Locked / rate limiting, серії помилок WPS-FAIL / WSC NACK або перевищенні таймауту.
    * Збереження знайдених даних у crack.json та зручний перегляд історії через -c / --cracks.
    * Управління станом інтерфейсу та NetworkManager (nmcli) під час роботи й відновлення з'єднання після завершення або через -r / --restore.
- * Автоматизація встановлення залежностей (install_deps.py):
-   * Автоматичне визначення пакетного менеджера Linux (apt, pacman, dnf, zypper, apk) та встановлення системних утиліт.
-   * Встановлення Python-залежностей із requirements.txt (за наявності), підтримка --dry-run та перевірка середовища.
- * Базовий рушій (oneshot.py):
+ * Оновлений базовий рушій (oneshot.py):
    * Атака Pixie Dust без переходу в monitor mode.
-   * Вбудований генератор WPS PIN (MAC-алгоритми та статичні PIN для поширених вендорів).
-   * Онлайн-брутфорс WPS із розбиттям на дві половини PIN та збереженням сесій.
-   * Сканер мереж на базі iw із підсвічуванням та підтримкою списку вразливих пристроїв (vulnwsc.txt).
+   * Вбудований генератор WPS PIN (MAC-алгоритми та статичні PIN для поширених вендорів) із валідацією MAC-адрес.
+   * Онлайн-брутфорс WPS із розбиттям на дві половини PIN, монотонним вимірюванням інтервалів (time.monotonic) та збереженням сесій.
+   * Сканер мереж на базі iw із табличним форматуванням (через wcwidth), кольоровим підсвічуванням та підтримкою списку вразливих пристроїв (vulnwsc.txt).
+   * Безпечний запуск зовнішніх утиліт без shell=True та гарантоване очищення тимчасових директорій і UNIX-сокетів при виході.
+ * Автоматизація встановлення залежностей (install_deps.py + requirements.txt):
+   * Автоматичне визначення пакетного менеджера Linux (apt, pacman, dnf, zypper, apk) та встановлення системних утиліт і пакета wcwidth.
+   * Підтримка встановлення Python-залежностей із requirements.txt, режим попереднього перегляду --dry-run та діагностика середовища.
 Вимоги
  * Python 3.6+
  * Права root (sudo) для роботи з мережевими інтерфейсами та wpa_supplicant
+ * Python-пакет:
+   * wcwidth (>=0.2.5) — для коректного вирівнювання таблиці мереж у терміналі
  * Системні утиліти:
    * wpa_supplicant (зібраний із підтримкою WPS, CONFIG_WPS=y)
    * pixiewps
@@ -32,29 +35,36 @@ OneShot — це набір інструментів для аудиту без�
 git clone https://github.com/Clinhfist/Oneshot.git
 cd Oneshot
 
-2. Встановлення системних залежностей
+2. Встановлення системних і Python-залежностей
 Автоматично через install_deps.py (рекомендовано для Linux)
 python3 install_deps.py
 
 Доступні прапори для install_deps.py:
  * --dry-run — лише показати команди без їх виконання.
  * --dir /шлях/до/проєкту — вказати директорію проєкту для пошуку requirements.txt.
-> Примітка щодо Windows: Оскільки main.py та oneshot.py спираються на pty, select і системні утиліти Linux (ip, iw, wpa_supplicant, nmcli), нативна робота на Windows не підтримується. Використовуйте нативний Linux або WSL2 із прокинутим USB Wi-Fi адаптером.
+> Примітка щодо Windows: Оскільки main.py та oneshot.py спираються на pty, select, UNIX-сокети та системні утиліти Linux (ip, iw, wpa_supplicant, nmcli), нативна робота на Windows не підтримується. Використовуйте нативний Linux або WSL2 із прокинутим USB Wi-Fi адаптером.
 > 
 Вручну за дистрибутивом
 Arch Linux / CachyOS:
-sudo pacman -S wpa_supplicant pixiewps iw iproute2 networkmanager python
+sudo pacman -S wpa_supplicant pixiewps iw iproute2 networkmanager python python-wcwidth
 
 Debian / Ubuntu:
 sudo apt update
-sudo apt install -y wpasupplicant pixiewps iw iproute2 network-manager python3
+sudo apt install -y wpasupplicant pixiewps iw iproute2 network-manager python3 python3-wcwidth
+
+Fedora / RHEL (dnf):
+sudo dnf install -y wpa_supplicant pixiewps iw iproute-tc python3 python3-wcwidth
 
 Alpine Linux / Termux (з root):
 # Alpine
-sudo apk add python3 wpa_supplicant pixiewps iw iproute2
+sudo apk add python3 py3-wcwidth wpa_supplicant pixiewps iw iproute2
 
 # Termux (потребує root)
 pkg install -y root-repo tsu python wpa-supplicant pixiewps iw openssl
+pip install -r requirements.txt
+
+Якщо встановлюєте Python-залежності окремо через pip:
+pip install -r requirements.txt
 
 Використання main.py
 Аргументи командного рядка
@@ -118,9 +128,11 @@ sudo python3 oneshot.py -i wlan0 --pbc
 Типові проблеми та вирішення
  * Інтерфейс заблоковано (RF-kill): виконайте sudo rfkill unblock wifi.
  * Інтерфейс зайнятий або NetworkManager перехоплює керування: використайте sudo python3 main.py -i <iface> -r для повернення інтерфейсу в managed-режим і увімкнення радіомодуля.
+ * Помилка ModuleNotFoundError: No module named 'wcwidth': запустіть python3 install_deps.py або встановіть python-wcwidth / python3-wcwidth через пакетний менеджер вашого дистрибутива.
  * Пристрої MediaTek SoC (наприклад, на Android/Linux з /dev/wmtWifi): у oneshot.py доступний прапор --mtk-wifi (попередньо вимкніть Wi-Fi у системних налаштуваннях).
 Подяки
  * rofl0r — за початкову реалізацію OneShotPin.
  * drygdryg — за розвиток та модифікації OneShot.
  * Wiire — за розробку pixiewps.
  * Monohrom — за тестування, ідеї та допомогу у виявленні помилок.
+ * 
