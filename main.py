@@ -339,6 +339,24 @@ def run_stage(
 
 
 def main():
+
+BANNER = r"""
+   ██████╗ ███╗   ██╗███████╗███████╗██╗  ██╗ ██████╗ ████████╗
+  ██╔═══██╗████╗  ██║██╔════╝██╔════╝██║  ██║██╔═══██╗╚══██╔══╝
+  ██║   ██║██╔██╗ ██║█████╗  ███████╗███████║██║   ██║   ██║   
+  ██║   ██║██║╚██╗██║██╔══╝  ╚════██║██╔══██║██║   ██║   ██║   
+  ╚██████╔╝██║ ╚████║███████╗███████║██║  ██║╚██████╔╝   ██║   
+   ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   
+  ══════════════════════════════════════════════════════════════
+   Multi-Target WPS Pipeline Wrapper  |  Author: Clinhfist
+   GitHub: https://github.com/Clinhfist/Oneshot
+  ══════════════════════════════════════════════════════════════
+"""
+
+
+def print_banner() -> None:
+    print(f"\033[96m{BANNER}\033[0m")
+
     parser = argparse.ArgumentParser(description='Multi-target pipeline wrapper for oneshot.py')
     parser.add_argument('-c', '--cracks', action='store_true', help='Print formatted results from crack.json')
     parser.add_argument('-i', '--interface', type=str, help='Wireless interface')
