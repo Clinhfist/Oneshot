@@ -1,73 +1,155 @@
-OneShot (Multi-Target Wrapper + OneShotPin)
-OneShot — це набір інструментів для аудиту безпеки WPS-мереж без необхідності переводити бездротовий інтерфейс у режим моніторингу. Репозиторій містить модернізований базовий скрипт oneshot.py, багатоцільову обгортку main.py з автоматизацією етапів перевірки, захистом від «зависання» на заблокованих або повільних точках доступу та збереженням результатів у crack.json, а також кросплатформний інсталятор залежностей install_deps.py і файл requirements.txt.
-> Примітка: Використовуйте інструмент лише у межах авторизованого тестування власних або дозволених для аудиту мереж.
-> 
-Можливості
- * Багатоцільовий пайплайн (main.py):
-   * Сканування WPS-мереж через oneshot.py із пріоритетним виведенням підсвічених (GREEN) цілей.
-   * Гнучкий вибір цілей: діапазон (1-3), перелік (1 2 4) або всі мережі (0).
-   * Послідовне проходження етапів для кожної точки доступу: Pixie Dust (-K) (за потреби з --pixie-force / -F), Bruteforce (-B) із заданою затримкою та опціонально PBC (--pbc).
-   * Анти-зависання (run_stage): автоматичний пропуск стадії при повторенні того самого PIN, виявленні WPS Locked / rate limiting, серії помилок WPS-FAIL / WSC NACK або перевищенні таймауту.
-   * Збереження знайдених даних у crack.json та зручний перегляд історії через -c / --cracks.
-   * Управління станом інтерфейсу та NetworkManager (nmcli) під час роботи й відновлення з'єднання після завершення або через -r / --restore.
- * Оновлений базовий рушій (oneshot.py):
-   * Атака Pixie Dust без переходу в monitor mode.
-   * Вбудований генератор WPS PIN (MAC-алгоритми та статичні PIN для поширених вендорів) із валідацією MAC-адрес.
-   * Онлайн-брутфорс WPS із розбиттям на дві половини PIN, монотонним вимірюванням інтервалів (time.monotonic) та збереженням сесій.
-   * Сканер мереж на базі iw із табличним форматуванням (через wcwidth), кольоровим підсвічуванням та підтримкою списку вразливих пристроїв (vulnwsc.txt).
-   * Безпечний запуск зовнішніх утиліт без shell=True та гарантоване очищення тимчасових директорій і UNIX-сокетів при виході.
- * Автоматизація встановлення залежностей (install_deps.py + requirements.txt):
-   * Автоматичне визначення пакетного менеджера Linux (apt, pacman, dnf, zypper, apk) та встановлення системних утиліт і пакета wcwidth.
-   * Підтримка встановлення Python-залежностей із requirements.txt, режим попереднього перегляду --dry-run та діагностика середовища.
-Вимоги
- * Python 3.6+
- * Права root (sudo) для роботи з мережевими інтерфейсами та wpa_supplicant
- * Python-пакет:
-   * wcwidth (>=0.2.5) — для коректного вирівнювання таблиці мереж у терміналі
- * Системні утиліти:
-   * wpa_supplicant (зібраний із підтримкою WPS, CONFIG_WPS=y)
-   * pixiewps
-   * iw
-   * ip (iproute2)
-   * nmcli (NetworkManager) — опціонально для керування станом managed та відновлення Wi-Fi
-Встановлення
+OneShot
+
+Multi-Target Wrapper + OneShotPin
+
+OneShot — це набір інструментів для аудиту безпеки WPS-мереж без необхідності переводити бездротовий інтерфейс у режим моніторингу (Monitor Mode).
+
+Репозиторій містить модернізований базовий скрипт "oneshot.py", багатоцільову обгортку "main.py" з автоматизацією етапів перевірки, захистом від зависання на заблокованих або повільних точках доступу та збереженням результатів у "crack.json".
+
+Також до складу входять кросплатформний інсталятор залежностей "install_deps.py" і файл "requirements.txt".
+
+«[!WARNING]
+Використовуйте інструмент виключно в межах авторизованого тестування власних мереж або мереж, на аудит яких ви маєте дозвіл.»
+
+---
+
+📑 Зміст
+
+- "Можливості" (#-можливості)
+- "Вимоги" (#-вимоги)
+- "Встановлення" (#-встановлення)
+- "Використання mainpy" (#-використання-mainpy)
+- "Формат crackjson" (#-формат-crackjson)
+- "Використання oneshotpy" (#-використання-oneshotpy)
+- "Типові проблеми та вирішення" (#-типові-проблеми-та-вирішення)
+- "Подяки" (#-подяки)
+
+---
+
+🚀 Можливості
+
+1. Багатоцільовий пайплайн ("main.py")
+
+- Автоматичне сканування: пошук WPS-мереж через "oneshot.py" із пріоритетним виведенням підсвічених (GREEN) цілей.
+- Гнучкий вибір цілей: підтримка діапазону ("1-3"), переліку ("1 2 4") або всіх доступних мереж ("0").
+- Послідовний пайплайн: виконання етапів для кожної точки доступу:
+  - Pixie Dust ("-K"), за потреби з "--pixie-force" ("-F").
+  - Bruteforce ("-B") із заданою затримкою.
+  - Push Button Connect ("--pbc"), за потреби.
+- Anti-Hang Protection ("run_stage"): автоматичний пропуск поточної стадії у разі:
+  - Повторення того самого PIN.
+  - Виявлення WPS Locked або rate limiting.
+  - Серії помилок "WPS-FAIL" / "WSC NACK".
+  - Перевищення встановленого таймауту.
+- Збереження результатів: автоматичний запис знайдених даних у "crack.json".
+- Історія результатів: зручний перегляд збережених даних через "-c" / "--cracks".
+- Керування мережевим інтерфейсом: інтеграція з NetworkManager ("nmcli"), управління станом інтерфейсу та відновлення з'єднання після завершення роботи або через "-r" / "--restore".
+
+2. Оновлений базовий рушій ("oneshot.py")
+
+- Pixie Dust: реалізація атаки без переходу в Monitor Mode.
+- WPS PIN Generator: вбудований генератор PIN на основі MAC-алгоритмів і статичних PIN поширених виробників із валідацією MAC-адрес.
+- Online Bruteforce: онлайн-брутфорс WPS із розбиттям PIN на дві половини, монотонним вимірюванням інтервалів ("time.monotonic") і збереженням сесій.
+- Network Scanner: сканування мереж на базі "iw", табличне форматування через "wcwidth", кольорове підсвічування та підтримка списку вразливих пристроїв ("vulnwsc.txt").
+- Безпечне виконання процесів: запуск зовнішніх утиліт без "shell=True".
+- Очищення ресурсів: гарантоване видалення тимчасових директорій і UNIX-сокетів під час завершення роботи.
+
+3. Автоматизація встановлення залежностей
+
+"install_deps.py" + "requirements.txt"
+
+- Автоматичне визначення пакетного менеджера Linux:
+  - "apt"
+  - "pacman"
+  - "dnf"
+  - "zypper"
+  - "apk"
+- Автоматичне встановлення системних утиліт і Python-пакета "wcwidth".
+- Встановлення Python-залежностей із "requirements.txt".
+- Режим попереднього перегляду команд ("--dry-run").
+- Діагностика системного середовища.
+
+---
+
+📋 Вимоги
+
+Компонент| Вимога
+Python| 3.6+
+Привілеї| Root / sudo
+Операційна система| Linux
+WPS| "wpa_supplicant" із підтримкою WPS
+
+Python-залежності
+
+Пакет| Версія| Призначення
+"wcwidth"| ≥ 0.2.5| Коректне вирівнювання таблиць у терміналі
+
+Системні залежності
+
+Утиліта| Призначення
+"wpa_supplicant"| Робота з WPS (потрібен "CONFIG_WPS=y")
+"pixiewps"| Обробка Pixie Dust
+"iw"| Керування та сканування Wi-Fi
+"ip" ("iproute2")| Управління мережевими інтерфейсами
+"nmcli" ("NetworkManager")| Опціональне керування станом мережі та відновлення Wi-Fi
+
+---
+
+📦 Встановлення
+
 1. Клонування репозиторію
+
 git clone https://github.com/Clinhfist/Oneshot.git
 cd Oneshot
 
 2. Встановлення системних і Python-залежностей
-Автоматично через install_deps.py (рекомендовано для Linux)
+
+Рекомендований спосіб для Linux:
+
 python3 install_deps.py
 
-Доступні прапори для install_deps.py:
- * --dry-run — лише показати команди без їх виконання.
- * --dir /шлях/до/проєкту — вказати директорію проєкту для пошуку requirements.txt.
-> Примітка щодо Windows: Оскільки main.py та oneshot.py спираються на pty, select, UNIX-сокети та системні утиліти Linux (ip, iw, wpa_supplicant, nmcli), нативна робота на Windows не підтримується. Використовуйте нативний Linux або WSL2 із прокинутим USB Wi-Fi адаптером.
-> 
-Вручну за дистрибутивом
-Arch Linux / CachyOS:
-sudo pacman -S wpa_supplicant pixiewps iw iproute2 networkmanager python python-wcwidth
+Доступні аргументи "install_deps.py":
 
-Debian / Ubuntu:
-sudo apt update
+Аргумент| Опис
+"--dry-run"| Показати команди без їх виконання
+"--dir PATH"| Вказати директорію проєкту для пошуку "requirements.txt"
+
+Встановлення вручну
+
+<details>
+<summary><b>Arch Linux / CachyOS</b></summary>sudo pacman -S wpa_supplicant pixiewps iw iproute2 networkmanager python python-wcwidth
+
+</details><details>
+<summary><b>Debian / Ubuntu</b></summary>sudo apt update
 sudo apt install -y wpasupplicant pixiewps iw iproute2 network-manager python3 python3-wcwidth
 
-Fedora / RHEL (dnf):
-sudo dnf install -y wpa_supplicant pixiewps iw iproute-tc python3 python3-wcwidth
+</details><details>
+<summary><b>Fedora / RHEL (dnf)</b></summary>sudo dnf install -y wpa_supplicant pixiewps iw iproute-tc python3 python3-wcwidth
 
-Alpine Linux / Termux (з root):
-# Alpine
-sudo apk add python3 py3-wcwidth wpa_supplicant pixiewps iw iproute2
+</details><details>
+<summary><b>Alpine Linux</b></summary>sudo apk add python3 py3-wcwidth wpa_supplicant pixiewps iw iproute2
 
-# Termux (потребує root)
-pkg install -y root-repo tsu python wpa-supplicant pixiewps iw openssl
+</details><details>
+<summary><b>Termux (потребує root)</b></summary>pkg install -y root-repo tsu python wpa-supplicant pixiewps iw openssl
 pip install -r requirements.txt
 
-Якщо встановлюєте Python-залежності окремо через pip:
+</details>Встановлення Python-залежностей окремо
+
+Якщо системні утиліти вже встановлені:
+
 pip install -r requirements.txt
 
-Використання main.py
+«[!NOTE]
+Windows: нативна робота не підтримується, оскільки "main.py" та "oneshot.py" використовують "pty", "select", UNIX-сокети та системні утиліти Linux ("ip", "iw", "wpa_supplicant", "nmcli").
+
+Для роботи використовуйте нативний Linux або WSL2 із прокинутим USB Wi-Fi адаптером.»
+
+---
+
+⚙️ Використання main.py
+
 Аргументи командного рядка
+
 usage: main.py [-h] [-c] [-i INTERFACE] [-d DELAY] [-F] [-v] [-r] [--pbc]
 
 Multi-target pipeline wrapper for oneshot.py
@@ -75,32 +157,43 @@ Multi-target pipeline wrapper for oneshot.py
 options:
   -h, --help            show this help message and exit
   -c, --cracks          Print formatted results from crack.json
-  -i, --interface INTERFACE
-                        Wireless interface
-  -d, --delay DELAY     Delay between pin attempts for bruteforce (default: 2.0)
+  -i, --interface       Wireless interface
+  -d, --delay DELAY     Delay between PIN attempts (default: 2.0)
   -F, --pixie-force     Use --pixie-force flag
-  -v, --verbose         Pass -v to oneshot.py for verbose output
-  -r, --restore         Restore Wi-Fi interface to managed mode and re-enable networking
+  -v, --verbose         Pass -v to oneshot.py
+  -r, --restore         Restore Wi-Fi interface to managed mode
   --pbc                 Include Push Button Connect stage if needed
 
-Приклади запусків
-Запуск багатоцільового сканування та пайплайну на інтерфейсі wlan0:
+Приклади запуску
+
+Базовий запуск багатоцільового сканування:
+
 sudo python3 main.py -i wlan0
 
-Запуск із --pixie-force, затримкою 1.5 с між спробами брутфорсу та додатковим етапом --pbc:
+Запуск із Pixie Force, затримкою 1.5 секунди та PBC:
+
 sudo python3 main.py -i wlan0 -F -d 1.5 --pbc
 
-Детальний вивід (verbose):
+Детальний вивід (Verbose):
+
 sudo python3 main.py -i wlan0 -v
 
-Перегляд збережених результатів із crack.json:
+Перегляд збережених результатів:
+
 python3 main.py -c
 
-Відновлення інтерфейсу в managed-режим та увімкнення Wi-Fi:
+Відновлення мережевого інтерфейсу:
+
 sudo python3 main.py -i wlan0 -r
 
-Формат crack.json
-Успішні результати автоматично додаються до crack.json у вигляді масиву об'єктів:
+---
+
+💾 Формат crack.json
+
+Успішні результати автоматично додаються до "crack.json" у форматі JSON-масиву об'єктів.
+
+Структура запису:
+
 [
   {
     "essid": "Example_AP",
@@ -111,28 +204,54 @@ sudo python3 main.py -i wlan0 -r
   }
 ]
 
-Використання oneshot.py напряму
-Якщо потрібно запустити окрему атаку без багатоцільової обгортки:
-# Сканування та інтерактивний вибір цілі + Pixie Dust
+---
+
+🔧 Використання oneshot.py
+
+Якщо потрібно запустити окрему операцію без використання багатоцільової обгортки "main.py":
+
+Сканування та інтерактивний вибір цілі + Pixie Dust:
+
 sudo python3 oneshot.py -i wlan0 -K
 
-# Pixie Dust за конкретним BSSID із записом у reports/stored.*
+Робота з конкретним BSSID із записом у "reports/stored.*":
+
 sudo python3 oneshot.py -i wlan0 -b 00:90:4C:C1:AC:21 -K -w
 
-# Онлайн-брутфорс із початковим PIN
+Online Bruteforce із початковим PIN:
+
 sudo python3 oneshot.py -i wlan0 -b 00:90:4C:C1:AC:21 -B -p 1234
 
-# WPS Push Button Connect
+WPS Push Button Connect:
+
 sudo python3 oneshot.py -i wlan0 --pbc
 
-Типові проблеми та вирішення
- * Інтерфейс заблоковано (RF-kill): виконайте sudo rfkill unblock wifi.
- * Інтерфейс зайнятий або NetworkManager перехоплює керування: використайте sudo python3 main.py -i <iface> -r для повернення інтерфейсу в managed-режим і увімкнення радіомодуля.
- * Помилка ModuleNotFoundError: No module named 'wcwidth': запустіть python3 install_deps.py або встановіть python-wcwidth / python3-wcwidth через пакетний менеджер вашого дистрибутива.
- * Пристрої MediaTek SoC (наприклад, на Android/Linux з /dev/wmtWifi): у oneshot.py доступний прапор --mtk-wifi (попередньо вимкніть Wi-Fi у системних налаштуваннях).
-Подяки
- * rofl0r — за початкову реалізацію OneShotPin.
- * drygdryg — за розвиток та модифікації OneShot.
- * Wiire — за розробку pixiewps.
- * Monohrom — за тестування, ідеї та допомогу у виявленні помилок.
- * 
+---
+
+🛠️ Типові проблеми та вирішення
+
+Проблема| Рішення
+Інтерфейс заблоковано (RF-kill)| "sudo rfkill unblock wifi"
+Інтерфейс зайнятий або NetworkManager перехоплює керування| "sudo python3 main.py -i <iface> -r"
+"ModuleNotFoundError: No module named 'wcwidth'"| "python3 install_deps.py" або встановлення "python-wcwidth" / "python3-wcwidth" через пакетний менеджер
+Пристрої MediaTek SoC ("/dev/wmtWifi")| Використовуйте прапор "--mtk-wifi" у "oneshot.py", попередньо вимкнувши Wi-Fi у системних налаштуваннях
+
+---
+
+🙏 Подяки
+
+Особлива подяка розробникам та учасникам, чия робота зробила цей проєкт можливим:
+
+Автор| Внесок
+"rofl0r" (https://github.com/rofl0r)| Початкова реалізація OneShotPin
+"drygdryg" (https://github.com/drygdryg)| Розвиток та модифікації OneShot
+"Wiire" (https://github.com/wiire)| Розробка pixiewps
+Monohrom| Тестування, ідеї та допомога у виявленні помилок
+
+---
+
+<p align="center">
+  <b>OneShot</b>
+  <br>
+  <sub>WPS Security Auditing Toolkit</sub>
+</p>
