@@ -20,6 +20,23 @@ REQUIRED_BINARIES = {
     'ip': 'iproute2',
 }
 
+BANNER = r"""
+   ██████╗ ███╗   ██╗███████╗███████╗██╗  ██╗ ██████╗ ████████╗
+  ██╔═══██╗████╗  ██║██╔════╝██╔════╝██║  ██║██╔═══██╗╚══██╔══╝
+  ██║   ██║██╔██╗ ██║█████╗  ███████╗███████║██║   ██║   ██║   
+  ██║   ██║██║╚██╗██║██╔══╝  ╚════██║██╔══██║██║   ██║   ██║   
+  ╚██████╔╝██║ ╚████║███████╗███████║██║  ██║╚██████╔╝   ██║   
+   ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   
+  ══════════════════════════════════════════════════════════════
+   Multi-Target WPS Pipeline Wrapper  |  Author: Clinhfist
+   GitHub: https://github.com/Clinhfist/Oneshot
+  ══════════════════════════════════════════════════════════════
+"""
+
+
+def print_banner() -> None:
+    print(f"\033[96m{BANNER}\033[0m")
+
 
 def restore_wifi(interface: str) -> None:
     commands = [
@@ -339,23 +356,7 @@ def run_stage(
 
 
 def main():
-
-BANNER = r"""
-   ██████╗ ███╗   ██╗███████╗███████╗██╗  ██╗ ██████╗ ████████╗
-  ██╔═══██╗████╗  ██║██╔════╝██╔════╝██║  ██║██╔═══██╗╚══██╔══╝
-  ██║   ██║██╔██╗ ██║█████╗  ███████╗███████║██║   ██║   ██║   
-  ██║   ██║██║╚██╗██║██╔══╝  ╚════██║██╔══██║██║   ██║   ██║   
-  ╚██████╔╝██║ ╚████║███████╗███████║██║  ██║╚██████╔╝   ██║   
-   ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   
-  ══════════════════════════════════════════════════════════════
-   Multi-Target WPS Pipeline Wrapper  |  Author: Clinhfist
-   GitHub: https://github.com/Clinhfist/Oneshot
-  ══════════════════════════════════════════════════════════════
-"""
-
-
-def print_banner() -> None:
-    print(f"\033[96m{BANNER}\033[0m")
+    print_banner()
 
     parser = argparse.ArgumentParser(description='Multi-target pipeline wrapper for oneshot.py')
     parser.add_argument('-c', '--cracks', action='store_true', help='Print formatted results from crack.json')
@@ -393,7 +394,7 @@ def print_banner() -> None:
         print("[-] No WPS-enabled networks found.")
         sys.exit(0)
 
-        print('\nAvailable WPS Networks (from oneshot):')
+    print('\nAvailable WPS Networks (from oneshot):')
     for n, net in net_dict.items():
         badge = "\033[92m[GREEN / VULN]\033[0m" if net['Green'] else "[normal]"
         pwr_str = f"{net['Level']}dBm" if net['Level'] != 'N/A' else "N/A"
@@ -481,6 +482,7 @@ def print_banner() -> None:
     restore_interface(args.interface)
     iface = getattr(args, "interface", None) or "wlan0"
     restore_wifi(iface)
-    
+
+
 if __name__ == '__main__':
     main()
